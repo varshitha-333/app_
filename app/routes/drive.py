@@ -17,8 +17,9 @@ from flask import Blueprint, current_app, jsonify, request
 from googleapiclient.errors import HttpError
 from werkzeug.utils import secure_filename
 
-from services.drive_service import DriveService
-from utils.validators import (
+# Fixed imports with app. prefix
+from app.services.drive_service import DriveService
+from app.utils.validators import (
     require_json,
     validate_create_file,
     validate_create_folder,

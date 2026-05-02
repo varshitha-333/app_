@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
@@ -12,15 +13,29 @@ class DriveService:
         Initialize using service account credentials from config.
         """
         try:
-            # Expecting GOOGLE_DRIVE_CREDENTIALS to be a path to JSON or a dict
-            creds_info = config.get("GOOGLE_DRIVE_CREDENTIALS")
+            # Check for the key used in Config class
+            creds_info = config.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+            
             if not creds_info:
-                raise ValueError("GOOGLE_DRIVE_CREDENTIALS not found in config")
+                # Fallback to the other common name
+                creds_info = config.get("GOOGLE_DRIVE_CREDENTIALS")
 
-            if isinstance(creds_info, dict):
+            if not creds_info:
+                raise ValueError("Google Drive credentials not found in config (checked GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_DRIVE_CREDENTIALS)")
+
+            # If it's a string (from Railway env var), parse it as JSON
+            if isinstance(creds_info, str):
+                try:
+                    creds_info = json.loads(creds_info)
+                except json.JSONDecodeError:
+                    # If it's not JSON, assume it's a file path
+                    self.creds = service_account.Credentials.from_service_account_file(creds_info)
+                else:
+                    self.creds = service_account.Credentials.from_service_account_info(creds_info)
+            elif isinstance(creds_info, dict):
                 self.creds = service_account.Credentials.from_service_account_info(creds_info)
             else:
-                self.creds = service_account.Credentials.from_service_account_file(creds_info)
+                raise ValueError("Invalid credentials format")
             
             self.scoped_creds = self.creds.with_scopes(['https://www.googleapis.com/auth/drive'])
             self.service = build('drive', 'v3', credentials=self.scoped_creds)
